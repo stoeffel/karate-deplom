@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Karate Diplom</title>
+    <style>
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #canvas {
+          visibility: visible;
+          page-break-after: always;
+          height: 100%;
+          width: auto;
+          margin-left: auto;
+          margin-right: auto;
+        }
+      }
+    </style>
+    <script src="main.js"></script>
+  </head>
+  <body>
+    <script>
+      var app = Elm.Main.init();
+      app.ports.dataUpdated.subscribe(({ name, grad, day, month, year }) => {
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+        const schrift = "./assets/schrift.png";
+        const shitoryu_logo = `./assets/Shitoryu_Log_${grad}.jpg`;
+        const [y1, y2, y3, y4] = year.toString();
+        const year_kanji1 = `./assets/${y1}${y2}.png`;
+        const year_kanji2 = `./assets/${y3}${y4}.png`;
+        const month_kanji = `./assets/${month}.png`;
+        const day_kanji = `./assets/${day}.png`;
+        const kanyi_size_percent = 0.2;
+        const { width, height } = canvas;
+        const message =
+          `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${day}.${month}.${year} erfolgreich bestanden hat.`.split(
+            "\n"
+          );
+        context.font = "30px Arial";
+        context.clearRect(0, 0, width, height);
+
+        drawImage(context, shitoryu_logo, posImgAt(360, 180))
+          .then(() => drawImage(context, schrift, posImgAt(0, 0)))
+          .then(() =>
+            drawImage(context, year_kanji1, posImgAt(185, 20), {
+              width: kanyi_size_percent,
+              height: kanyi_size_percent,
+            })
+          )
+          .then(() =>
+            drawImage(context, year_kanji2, posImgAt(185, 95), {
+              width: kanyi_size_percent,
+              height: kanyi_size_percent,
+            })
+          )
+          .then(() =>
+            drawImage(context, month_kanji, posImgAt(185, 255), {
+              width: kanyi_size_percent,
+              height: kanyi_size_percent,
+            })
+          )
+          .then(() =>
+            drawImage(context, day_kanji, posImgAt(185, 425), {
+              width: kanyi_size_percent,
+              height: kanyi_size_percent,
+            })
+          )
+          .then(() => context.fillText(message[0], 40, 720))
+          .then(() => context.fillText(message[1], 40, 770));
+      });
+
+      app.ports.print.subscribe(() => {
+        window.print();
+      });
+
+      function posImgAt(x, y) {
+        return () => {
+          return { x, y };
+        };
+      }
+      function drawImage(context, src, getPos, size) {
+        const { width, height } = canvas;
+        return new Promise((resolve) => {
+          let img = new Image();
+
+          img.src = src;
+          img.onload = () => {
+            const { x, y } = getPos(img);
+            if (size) {
+              context.drawImage(
+                img,
+                x,
+                y,
+                img.width * size.width,
+                img.height * size.height
+              );
+            } else {
+              context.drawImage(img, x, y, img.width, img.height);
+            }
+            resolve();
+          };
+        });
+      }
+      function saveImg() {
+        var dataUrl = document.getElementById("canvas");
+        var dataURL = canvas.toDataURL("image/png");
+        var newTab = window.open("about:blank", "image from canvas");
+        newTab.document.write("<img src='" + dataURL + "' alt='from canvas'/>");
+      }
+    </script>
+  </body>
+</html>
