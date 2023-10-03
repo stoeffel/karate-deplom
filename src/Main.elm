@@ -21,14 +21,19 @@ port dataUpdated : Encode.Value -> Cmd msg
 port print : {} -> Cmd msg
 
 
-encode : { model | name : String, grad : Grade, date : Date.Date } -> Encode.Value
+encode : { model | student : Student } -> Encode.Value
 encode model =
+    encodeStudent model.student
+
+
+encodeStudent : Student -> Encode.Value
+encodeStudent student =
     Encode.object
-        [ ( "name", Encode.string model.name )
-        , ( "grad", Encode.int (gradeToInt model.grad) )
-        , ( "day", Encode.int (Date.day model.date) )
-        , ( "month", Encode.int (monthToInt <| Date.month model.date) )
-        , ( "year", Encode.int (Date.year model.date) )
+        [ ( "name", Encode.string student.name )
+        , ( "grad", Encode.int (gradeToInt student.grad) )
+        , ( "day", Encode.int (Date.day student.date) )
+        , ( "month", Encode.int (monthToInt <| Date.month student.date) )
+        , ( "year", Encode.int (Date.year student.date) )
         ]
 
 
@@ -101,10 +106,15 @@ gradeToInt grade =
 
 
 type alias Model =
+    { student : Student
+    , datePicker : D.Model
+    }
+
+
+type alias Student =
     { name : String
     , grad : Grade
     , date : Date.Date
-    , datePicker : D.Model
     }
 
 
@@ -142,10 +152,12 @@ main =
 
 init : a -> ( Model, Cmd Msg )
 init _ =
-    ( { name = ""
-      , grad = Kyu8
+    ( { student =
+            { name = ""
+            , grad = Kyu8
+            , date = initialDate
+            }
       , datePicker = D.init
-      , date = initialDate
       }
     , Task.perform TodayFetched Date.today
     )
@@ -200,27 +212,30 @@ executeEffect ( model, effect ) =
 
 
 update : Msg -> Model -> ( Model, Effect )
-update msg model =
+update msg ({ student } as model) =
     case msg of
         NameChange name ->
-            ( { model | name = name }, DataUpdated )
+            ( { model | student = { student | name = name } }, DataUpdated )
 
         GradeChange grad ->
-            ( { model | grad = grad }, DataUpdated )
+            ( { model | student = { student | grad = grad } }, DataUpdated )
 
         DatePickerChange (D.DateChanged date) ->
             -- update both date and text
-            ( { model | date = date }, DataUpdated )
+            ( { model | student = { student | date = date } }, DataUpdated )
 
         DatePickerChange (D.TextChanged text) ->
             ( { model
-                | date =
-                    case Date.fromIsoString text of
-                        Ok date ->
-                            date
+                | student =
+                    { student
+                        | date =
+                            case Date.fromIsoString text of
+                                Ok date ->
+                                    date
 
-                        Err _ ->
-                            model.date
+                                Err _ ->
+                                    model.student.date
+                    }
               }
             , DataUpdated
             )
@@ -231,7 +246,7 @@ update msg model =
             )
 
         TodayFetched today ->
-            ( { model | date = today, datePicker = D.initWithToday today }
+            ( { model | student = { student | date = today }, datePicker = D.initWithToday today }
             , DataUpdated
             )
 
@@ -257,7 +272,7 @@ view model =
         [ row []
             [ I.text []
                 { onChange = NameChange
-                , text = model.name
+                , text = model.student.name
                 , placeholder = Nothing
                 , label = I.labelAbove [] (text "Name")
                 }
@@ -266,8 +281,8 @@ view model =
             [ D.input
                 []
                 { onChange = DatePickerChange
-                , selected = Just model.date
-                , text = formatDate model.date
+                , selected = Just model.student.date
+                , text = formatDate model.student.date
                 , label =
                     I.labelAbove [] <|
                         Element.text "Pick A Date"
@@ -280,7 +295,7 @@ view model =
             [ I.radio
                 []
                 { onChange = GradeChange
-                , selected = Just model.grad
+                , selected = Just model.student.grad
                 , label = I.labelAbove [] (text "Kyu")
                 , options =
                     [ I.option Kyu8 (text "Kyu 8")
@@ -295,7 +310,7 @@ view model =
                 }
             ]
         , row []
-            [ I.button [ Background.color (colorFromGrade model.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.grad |> .foreground) ]
+            [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
                 { onPress = Just Print
                 , label = text "Print"
                 }
