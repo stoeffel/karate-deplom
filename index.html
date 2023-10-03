@@ -44,7 +44,7 @@
         const impressum =
           "Karate Center Frauenfeld  Mitglied Swiss Karate Federation (SKF) und Nippon Karate-Do Shitoryu Japan";
         const sensei = "Peter Glarner 6. Dan";
-        context.font = "20px Arial";
+        context.font = "24px Arial";
         context.clearRect(0, 0, width, height);
 
         drawImage(context, shitoryu_logo, center(canvas))
@@ -76,8 +76,9 @@
           )
           .then(() => context.fillText(message[0], 40, 720))
           .then(() => context.fillText(message[1], 40, 750))
-          .then(() => (context.font = "12px Arial"))
+          .then(() => (context.font = "16px Arial"))
           .then(() => context.fillText(sensei, 800, 714))
+          .then(() => (context.font = "14px Arial"))
           .then(() => context.fillText(impressum, 40, 780));
       });
 
