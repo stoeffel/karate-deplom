@@ -10,8 +10,12 @@
       in {
         devShells = {
           default = pkgs.mkShell {
-            buildInputs =
-              [ pkgs.elmPackages.elm pkgs.gnumake pkgs.nodejs-19_x ];
+            buildInputs = [
+              pkgs.elmPackages.elm
+              pkgs.gnumake
+              pkgs.nodejs-19_x
+              pkgs.watchexec
+            ];
           };
         };
       });

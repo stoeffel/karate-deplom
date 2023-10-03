@@ -6,3 +6,16 @@ main.js: clean
 
 clean:
 	rm -f $(artifact)
+
+reactor:
+	elm reactor
+
+watch: clean
+	watchexec \
+  --clear \
+  --restart \
+  --watch src \
+  --watch elm.json \
+  "make"
+
+
