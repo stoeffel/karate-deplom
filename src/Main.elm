@@ -1,5 +1,7 @@
 port module Main exposing (..)
 
+import Array exposing (Array)
+import Array.Extra
 import Browser
 import Date exposing (Date)
 import DatePicker as D
@@ -18,12 +20,12 @@ import Time
 port dataUpdated : Encode.Value -> Cmd msg
 
 
-port print : {} -> Cmd msg
+port print : Encode.Value -> Cmd msg
 
 
-encode : { model | student : Student } -> Encode.Value
-encode model =
-    encodeStudent model.student
+encodeStudents : Array Student -> Encode.Value
+encodeStudents students =
+    Encode.list encodeStudent (Array.toList students)
 
 
 encodeStudent : Student -> Encode.Value
@@ -107,6 +109,7 @@ gradeToInt grade =
 
 type alias Model =
     { student : Student
+    , students : Array Student
     , datePicker : D.Model
     }
 
@@ -139,6 +142,8 @@ main =
                                     [ HA.id "canvas"
                                     , HA.width 957
                                     , HA.height 800
+                                    , HA.style "height" "790px"
+                                    , HA.style "width" "947px"
                                     ]
                                     []
                                 )
@@ -157,6 +162,7 @@ init _ =
             , grad = Kyu8
             , date = initialDate
             }
+      , students = Array.empty
       , datePicker = D.init
       }
     , Task.perform TodayFetched Date.today
@@ -178,6 +184,9 @@ type Msg
     | GradeChange Grade
     | DatePickerChange D.ChangeEvent
     | TodayFetched Date.Date
+    | Add
+    | Remove Int
+    | Edit Int
     | Print
 
 
@@ -202,10 +211,10 @@ executeEffect : ( Model, Effect ) -> ( Model, Cmd Msg )
 executeEffect ( model, effect ) =
     case effect of
         DataUpdated ->
-            ( model, dataUpdated (encode model) )
+            ( model, dataUpdated (encodeStudent model.student) )
 
         PrintEffect ->
-            ( model, print {} )
+            ( model, print (encodeStudents model.students) )
 
         NoEffect ->
             ( model, Cmd.none )
@@ -250,13 +259,37 @@ update msg ({ student } as model) =
             , DataUpdated
             )
 
+        Add ->
+            ( { model
+                | students = Array.push student model.students
+                , student = { student | name = "" }
+              }
+            , NoEffect
+            )
+
+        Remove index ->
+            ( { model | students = Array.Extra.removeAt index model.students }
+            , NoEffect
+            )
+
+        Edit index ->
+            ( { model
+                | student =
+                    model.students
+                        |> Array.get index
+                        |> Maybe.withDefault model.student
+                , students = Array.Extra.removeAt index model.students
+              }
+            , NoEffect
+            )
+
         Print ->
             ( model, PrintEffect )
 
 
 view : Model -> Element Msg
 view model =
-    column
+    row
         [ Background.color (rgba255 255 255 255 0.8)
         , HA.style "backdrop-filter" "blur(10px)"
             |> htmlAttribute
@@ -266,56 +299,141 @@ view model =
         , Border.solid
         , Border.rounded 8
         , Border.width 4
-        , padding 20
-        , spacing 20
+        , fill
+            |> minimum 800
+            |> width
         ]
-        [ row []
-            [ I.text []
-                { onChange = NameChange
-                , text = model.student.name
-                , placeholder = Nothing
-                , label = I.labelAbove [] (text "Name")
-                }
+        [ column
+            [ padding 20
+            , spacing 20
+            , alignTop
+            , fillPortion 1
+                |> width
             ]
-        , row []
-            [ D.input
-                []
-                { onChange = DatePickerChange
-                , selected = Just model.student.date
-                , text = formatDate model.student.date
-                , label =
-                    I.labelAbove [] <|
-                        Element.text "Pick A Date"
-                , placeholder = Nothing
-                , settings = D.defaultSettings
-                , model = model.datePicker
-                }
+            [ row []
+                [ I.text []
+                    { onChange = NameChange
+                    , text = model.student.name
+                    , placeholder = Nothing
+                    , label = I.labelAbove [] (text "Name")
+                    }
+                ]
+            , row []
+                [ D.input
+                    []
+                    { onChange = DatePickerChange
+                    , selected = Just model.student.date
+                    , text = formatDate model.student.date
+                    , label =
+                        I.labelAbove [] <|
+                            Element.text "Pick A Date"
+                    , placeholder = Nothing
+                    , settings = D.defaultSettings
+                    , model = model.datePicker
+                    }
+                ]
+            , wrappedRow []
+                [ I.radio
+                    []
+                    { onChange = GradeChange
+                    , selected = Just model.student.grad
+                    , label = I.labelAbove [] (text "Kyu")
+                    , options =
+                        [ I.option Kyu8 (text "Kyu 8")
+                        , I.option Kyu7 (text "Kyu 7")
+                        , I.option Kyu6 (text "Kyu 6")
+                        , I.option Kyu5 (text "Kyu 5")
+                        , I.option Kyu4 (text "Kyu 4")
+                        , I.option Kyu3 (text "Kyu 3")
+                        , I.option Kyu2 (text "Kyu 2")
+                        , I.option Kyu1 (text "Kyu 1")
+                        ]
+                    }
+                ]
+            , row []
+                [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
+                    { onPress = Just Add
+                    , label = text "Add"
+                    }
+                ]
             ]
-        , wrappedRow []
-            [ I.radio
-                []
-                { onChange = GradeChange
-                , selected = Just model.student.grad
-                , label = I.labelAbove [] (text "Kyu")
-                , options =
-                    [ I.option Kyu8 (text "Kyu 8")
-                    , I.option Kyu7 (text "Kyu 7")
-                    , I.option Kyu6 (text "Kyu 6")
-                    , I.option Kyu5 (text "Kyu 5")
-                    , I.option Kyu4 (text "Kyu 4")
-                    , I.option Kyu3 (text "Kyu 3")
-                    , I.option Kyu2 (text "Kyu 2")
-                    , I.option Kyu1 (text "Kyu 1")
+        , column
+            [ padding 20
+            , spacing 20
+            , alignTop
+            , fillPortion 1
+                |> width
+            ]
+            [ row [ spacing 20 ]
+                [ if Array.isEmpty model.students then
+                    Element.text "keine Studenten erfasst"
+
+                  else
+                    Element.indexedTable [ spacing 8 ]
+                        { data = Array.toList model.students
+                        , columns =
+                            [ { header = Element.none
+                              , width = fill
+                              , view = \index _ -> Element.text (String.fromInt (index + 1) ++ ".")
+                              }
+                            , { header = tableHeader [] "Name"
+                              , width = fill
+                              , view = \_ student -> Element.text student.name
+                              }
+                            , { header = tableHeader [ Font.center ] "Grad"
+                              , width = fill
+                              , view =
+                                    \_ student ->
+                                        el
+                                            [ Font.color (colorFromGrade student.grad |> .foreground)
+                                            , Background.color (colorFromGrade student.grad |> .background)
+                                            , padding 2
+                                            , Border.solid
+                                            , Border.rounded 8
+                                            , Border.width 0
+                                            , Font.center
+                                            ]
+                                            (Element.text ("Kyu " ++ String.fromInt (gradeToInt student.grad)))
+                              }
+                            , { header = tableHeader [] "Datum"
+                              , width = fill
+                              , view = \_ student -> Element.text (formatDate student.date)
+                              }
+                            , { header = Element.none
+                              , width = fill
+                              , view =
+                                    \index _ ->
+                                        row []
+                                            [ I.button [ padding 2, centerX, centerY ]
+                                                { onPress = Just (Remove index)
+                                                , label = text "🗑️"
+                                                }
+                                            , I.button [ padding 2, centerX, centerY ]
+                                                { onPress = Just (Edit index)
+                                                , label = text "✏️"
+                                                }
+                                            ]
+                              }
+                            ]
+                        }
+                ]
+            , if Array.isEmpty model.students then
+                Element.none
+
+              else
+                row []
+                    [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
+                        { onPress = Just Print
+                        , label = text "Print"
+                        }
                     ]
-                }
-            ]
-        , row []
-            [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
-                { onPress = Just Print
-                , label = text "Print"
-                }
             ]
         ]
+
+
+tableHeader : List (Attribute msg) -> String -> Element msg
+tableHeader attrs text =
+    el (attrs ++ [ Font.bold ]) (Element.text text)
 
 
 {-| Function uses the grade color to color the background and uses a contrasting color for the text.

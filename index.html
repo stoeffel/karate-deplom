@@ -5,17 +5,33 @@
     <title>Karate Diplom</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
+      #prints {
+        visibility: hidden;
+      }
+      .print {
+        visibility: hidden;
+      }
       @media print {
         body * {
           visibility: hidden;
+          margin: 0;
+          padding: 0;
         }
-        #canvas {
+        #prints {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          visibility: visible;
+          margin: 0;
+          padding: 0;
+        }
+        .print {
           visibility: visible;
           page-break-after: always;
-          width: auto;
-          height: 100%;
-          margin: auto;
-          position: relative;
+          page-break-before: never;
+          margin: 0;
+          padding: 0;
         }
       }
     </style>
@@ -24,9 +40,17 @@
   <body>
     <script>
       var app = Elm.Main.init();
-      app.ports.dataUpdated.subscribe(({ name, grad, day, month, year }) => {
+      app.ports.dataUpdated.subscribe((data) => {
         const canvas = document.getElementById("canvas");
         const context = canvas.getContext("2d");
+        printToCanvas(canvas, context, data);
+      });
+
+      function printToCanvas(
+        canvas,
+        context,
+        { name, grad, day, month, year }
+      ) {
         const schrift = "./assets/schrift.png";
         const shitoryu_logo = `./assets/Shitoryu_Log_${grad}.jpg`;
         const [y1, y2, y3, y4] = year.toString();
@@ -47,7 +71,7 @@
         context.font = "24px Arial";
         context.clearRect(0, 0, width, height);
 
-        drawImage(context, shitoryu_logo, center(canvas))
+        return drawImage(context, shitoryu_logo, center(canvas))
           .then(() => drawImage(context, schrift, posImgAt(0, 10)))
           .then(() => drawImage(context, grad_kanji, posImgAt(510, 420)))
           .then(() =>
@@ -80,10 +104,35 @@
           .then(() => context.fillText(sensei, 800, 714))
           .then(() => (context.font = "14px Arial"))
           .then(() => context.fillText(impressum, 40, 780));
-      });
+      }
+      app.ports.print.subscribe((students) => {
+        const toRemove = document.querySelectorAll("#prints");
+        toRemove.forEach((p) => {
+          p.remove();
+        });
+        const prints = document.createElement("div");
+        prints.id = "prints";
+        document.body.appendChild(prints);
+        Promise.all(
+          students.map((student) => {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
 
-      app.ports.print.subscribe(() => {
-        window.print();
+            canvas.className = "print";
+            canvas.setAttribute("width", "957");
+            canvas.setAttribute("height", "800");
+            canvas.style.width = "947px";
+            canvas.style.height = "790px";
+            return new Promise((resolve) => {
+              prints.appendChild(canvas);
+              window.requestAnimationFrame(() => {
+                resolve(printToCanvas(canvas, context, student));
+              });
+            });
+          })
+        ).then(() => {
+          window.print();
+        });
       });
 
       function center(canvas) {
