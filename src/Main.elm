@@ -128,10 +128,7 @@ main =
                                 (Html.canvas
                                     [ HA.id "canvas"
                                     , HA.width 957
-                                    , HA.height 780
-                                    , HA.style "position" "absolute"
-                                    , HA.style "top" "0"
-                                    , HA.style "left" "0"
+                                    , HA.height 800
                                     ]
                                     []
                                 )

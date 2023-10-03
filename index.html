@@ -12,10 +12,10 @@
         #canvas {
           visibility: visible;
           page-break-after: always;
-          height: 100%;
           width: auto;
-          margin-left: auto;
-          margin-right: auto;
+          height: 100%;
+          margin: auto;
+          position: relative;
         }
       }
     </style>
@@ -40,42 +40,59 @@
           `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${day}.${month}.${year} erfolgreich bestanden hat.`.split(
             "\n"
           );
-        context.font = "30px Arial";
+        const impressum =
+          "Karate Center Frauenfeld  Mitglied Swiss Karate Federation (SKF) und Nippon Karate-Do Shitoryu Japan";
+        const sensei = "Peter Glarner 6. Dan";
+        context.font = "16px Arial";
         context.clearRect(0, 0, width, height);
 
-        drawImage(context, shitoryu_logo, posImgAt(360, 180))
-          .then(() => drawImage(context, schrift, posImgAt(0, 0)))
+        drawImage(context, shitoryu_logo, center(canvas))
+          .then(() => drawImage(context, schrift, posImgAt(0, 10)))
           .then(() =>
-            drawImage(context, year_kanji1, posImgAt(185, 20), {
+            drawImage(context, year_kanji1, posImgAt(185, 30), {
               width: kanyi_size_percent,
               height: kanyi_size_percent,
             })
           )
           .then(() =>
-            drawImage(context, year_kanji2, posImgAt(185, 95), {
+            drawImage(context, year_kanji2, posImgAt(185, 105), {
               width: kanyi_size_percent,
               height: kanyi_size_percent,
             })
           )
           .then(() =>
-            drawImage(context, month_kanji, posImgAt(185, 255), {
+            drawImage(context, month_kanji, posImgAt(185, 265), {
               width: kanyi_size_percent,
               height: kanyi_size_percent,
             })
           )
           .then(() =>
-            drawImage(context, day_kanji, posImgAt(185, 425), {
+            drawImage(context, day_kanji, posImgAt(185, 435), {
               width: kanyi_size_percent,
               height: kanyi_size_percent,
             })
           )
           .then(() => context.fillText(message[0], 40, 720))
-          .then(() => context.fillText(message[1], 40, 770));
+          .then(() => context.fillText(message[1], 40, 750))
+          .then(() => (context.font = "12px Arial"))
+          .then(() => context.fillText(sensei, 800, 720))
+          .then(() => context.fillText(impressum, 40, 780));
       });
 
       app.ports.print.subscribe(() => {
         window.print();
       });
+
+      function center(canvas) {
+        return (img) => {
+          const { width, height } = canvas;
+
+          return {
+            x: (width - img.width) / 2,
+            y: (height - img.height) / 2,
+          };
+        };
+      }
 
       function posImgAt(x, y) {
         return () => {
