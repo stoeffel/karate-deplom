@@ -40,6 +40,9 @@
   <body>
     <script>
       var app = Elm.Main.init();
+      app.ports.focus.subscribe(() => {
+        document.querySelectorAll("input")[0].focus();
+      });
       app.ports.dataUpdated.subscribe((data) => {
         const canvas = document.getElementById("canvas");
         const context = canvas.getContext("2d");

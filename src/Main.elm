@@ -12,6 +12,8 @@ import Element.Font as Font
 import Element.Input as I
 import Html
 import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Task
 import Time
@@ -21,6 +23,9 @@ port dataUpdated : Encode.Value -> Cmd msg
 
 
 port print : Encode.Value -> Cmd msg
+
+
+port focus : {} -> Cmd msg
 
 
 encodeStudents : Array Student -> Encode.Value
@@ -204,6 +209,7 @@ type Grade
 type Effect
     = DataUpdated
     | PrintEffect
+    | Focus
     | NoEffect
 
 
@@ -215,6 +221,9 @@ executeEffect ( model, effect ) =
 
         PrintEffect ->
             ( model, print (encodeStudents model.students) )
+
+        Focus ->
+            ( model, focus {} )
 
         NoEffect ->
             ( model, Cmd.none )
@@ -264,7 +273,7 @@ update msg ({ student } as model) =
                 | students = Array.push student model.students
                 , student = { student | name = "" }
               }
-            , NoEffect
+            , Focus
             )
 
         Remove index ->
@@ -309,9 +318,13 @@ view model =
             , alignTop
             , fillPortion 1
                 |> width
+            , onEnter Add
             ]
             [ row []
-                [ I.text []
+                [ I.text
+                    [ HA.autofocus True
+                        |> htmlAttribute
+                    ]
                     { onChange = NameChange
                     , text = model.student.name
                     , placeholder = Nothing
@@ -472,3 +485,23 @@ colorFromGrade grade =
 
         Kyu8 ->
             { background = rgb255 255 255 0, foreground = rgb255 0 0 0 }
+
+
+onEnter : msg -> Attribute msg
+onEnter msg =
+    HE.on "keydown" (Decode.andThen (onEnterDecoder msg) keyCodeDecoder)
+        |> htmlAttribute
+
+
+onEnterDecoder : msg -> Int -> Decode.Decoder msg
+onEnterDecoder msg keyCode =
+    if keyCode == 13 then
+        Decode.succeed msg
+
+    else
+        Decode.fail "Not the enter key"
+
+
+keyCodeDecoder : Decode.Decoder Int
+keyCodeDecoder =
+    Decode.field "keyCode" Decode.int
