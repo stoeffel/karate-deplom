@@ -122,17 +122,16 @@ main =
                 { title = "Karate Diplom"
                 , body =
                     [ layout
-                        [ behindContent
+                        [ padding 20
+                        , behindContent
                             (html
                                 (Html.canvas
                                     [ HA.id "canvas"
                                     , HA.width 957
                                     , HA.height 780
                                     , HA.style "position" "absolute"
-                                    , HA.style "margin-left" "auto"
-                                    , HA.style "margin-right" "auto"
-                                    , HA.style "height" "100%"
-                                    , HA.style "width" "auto"
+                                    , HA.style "top" "0"
+                                    , HA.style "left" "0"
                                     ]
                                     []
                                 )
@@ -245,67 +244,64 @@ update msg model =
 
 view : Model -> Element Msg
 view model =
-    row
-        [ centerX
-        , centerY
+    column
+        [ Background.color (rgba255 255 255 255 0.8)
+        , HA.style "backdrop-filter" "blur(10px)"
+            |> htmlAttribute
+        , HA.style "backdrop-filter" "blur(10px)"
+            |> htmlAttribute
+        , Border.color (rgba255 20 20 20 0.95)
+        , Border.solid
+        , Border.rounded 8
+        , Border.width 4
+        , padding 20
+        , spacing 20
         ]
-        [ column
-            [ Background.color (rgba255 255 255 255 0.8)
-            , HA.style "backdrop-filter" "blur(10px)"
-                |> htmlAttribute
-            , padding 20
-            , spacing 20
-            , Border.color (rgba255 20 20 20 0.8)
-            , Border.solid
-            , Border.rounded 8
-            , Border.width 4
+        [ row []
+            [ I.text []
+                { onChange = NameChange
+                , text = model.name
+                , placeholder = Nothing
+                , label = I.labelAbove [] (text "Name")
+                }
             ]
-            [ row []
-                [ I.text []
-                    { onChange = NameChange
-                    , text = model.name
-                    , placeholder = Nothing
-                    , label = I.labelAbove [] (text "Name")
-                    }
-                , D.input
-                    [ Element.centerX, Element.centerY ]
-                    { onChange = DatePickerChange
-                    , selected = Just model.date
-                    , text = formatDate model.date
-                    , label =
-                        I.labelAbove [] <|
-                            Element.text "Pick A Date"
-                    , placeholder = Nothing
-                    , settings = D.defaultSettings
-                    , model = model.datePicker
-                    }
-                ]
-            , row []
-                [ I.radioRow
-                    [ padding 10
-                    , spacing 20
+        , row []
+            [ D.input
+                []
+                { onChange = DatePickerChange
+                , selected = Just model.date
+                , text = formatDate model.date
+                , label =
+                    I.labelAbove [] <|
+                        Element.text "Pick A Date"
+                , placeholder = Nothing
+                , settings = D.defaultSettings
+                , model = model.datePicker
+                }
+            ]
+        , wrappedRow []
+            [ I.radio
+                []
+                { onChange = GradeChange
+                , selected = Just model.grad
+                , label = I.labelAbove [] (text "Kyu")
+                , options =
+                    [ I.option Kyu8 (text "Kyu 8")
+                    , I.option Kyu7 (text "Kyu 7")
+                    , I.option Kyu6 (text "Kyu 6")
+                    , I.option Kyu5 (text "Kyu 5")
+                    , I.option Kyu4 (text "Kyu 4")
+                    , I.option Kyu3 (text "Kyu 3")
+                    , I.option Kyu2 (text "Kyu 2")
+                    , I.option Kyu1 (text "Kyu 1")
                     ]
-                    { onChange = GradeChange
-                    , selected = Just model.grad
-                    , label = I.labelAbove [] (text "Kyu")
-                    , options =
-                        [ I.option Kyu8 (text "Kyu 8")
-                        , I.option Kyu7 (text "Kyu 7")
-                        , I.option Kyu6 (text "Kyu 6")
-                        , I.option Kyu5 (text "Kyu 5")
-                        , I.option Kyu4 (text "Kyu 4")
-                        , I.option Kyu3 (text "Kyu 3")
-                        , I.option Kyu2 (text "Kyu 2")
-                        , I.option Kyu1 (text "Kyu 1")
-                        ]
-                    }
-                ]
-            , row []
-                [ I.button [ Background.color (colorFromGrade model.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.grad |> .foreground) ]
-                    { onPress = Just Print
-                    , label = text "Print"
-                    }
-                ]
+                }
+            ]
+        , row []
+            [ I.button [ Background.color (colorFromGrade model.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.grad |> .foreground) ]
+                { onPress = Just Print
+                , label = text "Print"
+                }
             ]
         ]
 
