@@ -35,6 +35,7 @@
         const month_kanji = `./assets/${month}.png`;
         const day_kanji = `./assets/${day}.png`;
         const kanyi_size_percent = 0.2;
+        const grad_kanji = `./assets/Kyu_${grad}.png`;
         const { width, height } = canvas;
         const message =
           `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${day}.${month}.${year} erfolgreich bestanden hat.`.split(
@@ -43,11 +44,12 @@
         const impressum =
           "Karate Center Frauenfeld  Mitglied Swiss Karate Federation (SKF) und Nippon Karate-Do Shitoryu Japan";
         const sensei = "Peter Glarner 6. Dan";
-        context.font = "16px Arial";
+        context.font = "20px Arial";
         context.clearRect(0, 0, width, height);
 
         drawImage(context, shitoryu_logo, center(canvas))
           .then(() => drawImage(context, schrift, posImgAt(0, 10)))
+          .then(() => drawImage(context, grad_kanji, posImgAt(510, 420)))
           .then(() =>
             drawImage(context, year_kanji1, posImgAt(185, 30), {
               width: kanyi_size_percent,
@@ -75,7 +77,7 @@
           .then(() => context.fillText(message[0], 40, 720))
           .then(() => context.fillText(message[1], 40, 750))
           .then(() => (context.font = "12px Arial"))
-          .then(() => context.fillText(sensei, 800, 720))
+          .then(() => context.fillText(sensei, 800, 714))
           .then(() => context.fillText(impressum, 40, 780));
       });
 
