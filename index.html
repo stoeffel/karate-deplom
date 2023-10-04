@@ -64,8 +64,10 @@
         const kanyi_size_percent = 0.2;
         const grad_kanji = `./assets/Kyu_${grad}.png`;
         const { width, height } = canvas;
+        const niceDay = day.toString().padStart(2, 0);
+        const niceMonth = month.toString().padStart(2, 0);
         const message =
-          `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${day}.${month}.${year} erfolgreich bestanden hat.`.split(
+          `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${niceDay}.${niceMonth}.${year} erfolgreich bestanden hat.`.split(
             "\n"
           );
         const impressum =

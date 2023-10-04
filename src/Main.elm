@@ -4,7 +4,6 @@ import Array exposing (Array)
 import Array.Extra
 import Browser
 import Date exposing (Date)
-import DatePicker as D
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -35,13 +34,18 @@ encodeStudents students =
 
 encodeStudent : Student -> Encode.Value
 encodeStudent student =
-    Encode.object
-        [ ( "name", Encode.string student.name )
-        , ( "grad", Encode.int (gradeToInt student.grad) )
-        , ( "day", Encode.int (Date.day student.date) )
-        , ( "month", Encode.int (monthToInt <| Date.month student.date) )
-        , ( "year", Encode.int (Date.year student.date) )
-        ]
+    case List.filterMap String.toInt <| String.split "." student.date of
+        [ d, m, y ] ->
+            Encode.object
+                [ ( "name", Encode.string student.name )
+                , ( "grad", Encode.int (gradeToInt student.grad) )
+                , ( "day", Encode.int d )
+                , ( "month", Encode.int m )
+                , ( "year", Encode.int y )
+                ]
+
+        _ ->
+            Encode.object []
 
 
 monthToInt : Date.Month -> Int
@@ -84,6 +88,49 @@ monthToInt month =
             12
 
 
+monthFromInt : Int -> Date.Month
+monthFromInt month =
+    case month of
+        1 ->
+            Time.Jan
+
+        2 ->
+            Time.Feb
+
+        3 ->
+            Time.Mar
+
+        4 ->
+            Time.Apr
+
+        5 ->
+            Time.May
+
+        6 ->
+            Time.Jun
+
+        7 ->
+            Time.Jul
+
+        8 ->
+            Time.Aug
+
+        9 ->
+            Time.Sep
+
+        10 ->
+            Time.Oct
+
+        11 ->
+            Time.Nov
+
+        12 ->
+            Time.Dec
+
+        _ ->
+            Time.Jan
+
+
 gradeToInt : Grade -> Int
 gradeToInt grade =
     case grade of
@@ -114,15 +161,21 @@ gradeToInt grade =
 
 type alias Model =
     { student : Student
+    , dateError : Bool
+    , mode : Mode
     , students : Array Student
-    , datePicker : D.Model
     }
+
+
+type Mode
+    = Adding
+    | Editing Int
 
 
 type alias Student =
     { name : String
     , grad : Grade
-    , date : Date.Date
+    , date : String
     }
 
 
@@ -165,10 +218,11 @@ init _ =
     ( { student =
             { name = ""
             , grad = Kyu8
-            , date = initialDate
+            , date = formatDate initialDate
             }
       , students = Array.empty
-      , datePicker = D.init
+      , dateError = False
+      , mode = Adding
       }
     , Task.perform TodayFetched Date.today
     )
@@ -187,11 +241,13 @@ initialDate =
 type Msg
     = NameChange String
     | GradeChange Grade
-    | DatePickerChange D.ChangeEvent
+    | DateChange String
     | TodayFetched Date.Date
     | Add
     | Remove Int
     | Edit Int
+    | Save Int
+    | Cancel
     | Print
 
 
@@ -238,33 +294,47 @@ update msg ({ student } as model) =
         GradeChange grad ->
             ( { model | student = { student | grad = grad } }, DataUpdated )
 
-        DatePickerChange (D.DateChanged date) ->
-            -- update both date and text
-            ( { model | student = { student | date = date } }, DataUpdated )
-
-        DatePickerChange (D.TextChanged text) ->
-            ( { model
+        DateChange editDate ->
+            { model
                 | student =
                     { student
                         | date =
-                            case Date.fromIsoString text of
-                                Ok date ->
-                                    date
-
-                                Err _ ->
-                                    model.student.date
+                            editDate
                     }
-              }
-            , DataUpdated
-            )
+                , dateError =
+                    case String.split "." editDate of
+                        [ dStr, mStr, yStr ] ->
+                            (String.length dStr /= 2)
+                                || (String.length mStr /= 2)
+                                || (String.length yStr /= 4)
+                                || (case List.filterMap String.toInt [ dStr, mStr, yStr ] of
+                                        [ d, m, y ] ->
+                                            (d < 1)
+                                                || (d > 31)
+                                                || (m < 1)
+                                                || (m > 12)
+                                                || (y < 1900)
+                                                || (y > 2100)
 
-        DatePickerChange (D.PickerChanged subMsg) ->
-            ( { model | datePicker = D.update subMsg model.datePicker }
-            , NoEffect
-            )
+                                        _ ->
+                                            True
+                                   )
+
+                        _ ->
+                            True
+            }
+                |> (\m ->
+                        ( m
+                        , if m.dateError then
+                            NoEffect
+
+                          else
+                            DataUpdated
+                        )
+                   )
 
         TodayFetched today ->
-            ( { model | student = { student | date = today }, datePicker = D.initWithToday today }
+            ( { model | student = { student | date = formatDate today } }
             , DataUpdated
             )
 
@@ -283,13 +353,30 @@ update msg ({ student } as model) =
 
         Edit index ->
             ( { model
-                | student =
+                | mode = Editing index
+                , student =
                     model.students
                         |> Array.get index
                         |> Maybe.withDefault model.student
-                , students = Array.Extra.removeAt index model.students
               }
-            , NoEffect
+            , Focus
+            )
+
+        Save index ->
+            ( { model
+                | mode = Adding
+                , students = Array.set index student model.students
+                , student = { student | name = "" }
+              }
+            , Focus
+            )
+
+        Cancel ->
+            ( { model
+                | mode = Adding
+                , student = { student | name = "" }
+              }
+            , Focus
             )
 
         Print ->
@@ -332,18 +419,27 @@ view model =
                     }
                 ]
             , row []
-                [ D.input
-                    []
-                    { onChange = DatePickerChange
-                    , selected = Just model.student.date
-                    , text = formatDate model.student.date
-                    , label =
-                        I.labelAbove [] <|
-                            Element.text "Pick A Date"
-                    , placeholder = Nothing
-                    , settings = D.defaultSettings
-                    , model = model.datePicker
-                    }
+                [ column [ width fill ]
+                    [ I.text
+                        (if model.dateError then
+                            [ Border.color (rgb 255 0 0)
+                            ]
+
+                         else
+                            []
+                        )
+                        { onChange = DateChange
+                        , text = model.student.date
+                        , label =
+                            I.labelAbove [] (text "Datum")
+                        , placeholder = Nothing
+                        }
+                    , if model.dateError then
+                        text "Datum muss im Format dd.mm.yyyy sein"
+
+                      else
+                        text ""
+                    ]
                 ]
             , wrappedRow []
                 [ I.radio
@@ -363,12 +459,40 @@ view model =
                         ]
                     }
                 ]
-            , row []
-                [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
-                    { onPress = Just Add
-                    , label = text "Add"
-                    }
-                ]
+            , row [ spacing 20 ] <|
+                case model.mode of
+                    Adding ->
+                        [ I.button
+                            [ padding 10
+                            , Border.rounded 8
+                            , Font.color (colorFromGrade model.student.grad |> .foreground)
+                            , if model.dateError then
+                                Background.color (rgb255 180 180 180)
+
+                              else
+                                Background.color (colorFromGrade model.student.grad |> .background)
+                            ]
+                            { onPress =
+                                if model.dateError then
+                                    Nothing
+
+                                else
+                                    Just Add
+                            , label = text "Hinzufügen"
+                            }
+                        ]
+
+                    Editing index ->
+                        [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
+                            { onPress = Just (Save index)
+                            , label = text "ändern"
+                            }
+                        , -- cancel
+                          I.button [ Background.color (rgb255 180 180 180), padding 10, Border.rounded 8, Font.color (rgb255 10 10 10) ]
+                            { onPress = Just Cancel
+                            , label = text "abbrechen"
+                            }
+                        ]
             ]
         , column
             [ padding 20
@@ -387,7 +511,19 @@ view model =
                         , columns =
                             [ { header = Element.none
                               , width = fill
-                              , view = \index _ -> Element.text (String.fromInt (index + 1) ++ ".")
+                              , view =
+                                    \index _ ->
+                                        -- when editing show little right pointing arrow before as emoji
+                                        case model.mode of
+                                            Adding ->
+                                                Element.text (" " ++ String.fromInt (index + 1) ++ ".")
+
+                                            Editing editingIndex ->
+                                                if index == editingIndex then
+                                                    Element.text "➡️"
+
+                                                else
+                                                    Element.text (" " ++ String.fromInt (index + 1) ++ ".")
                               }
                             , { header = tableHeader [] "Name"
                               , width = fill
@@ -410,7 +546,7 @@ view model =
                               }
                             , { header = tableHeader [] "Datum"
                               , width = fill
-                              , view = \_ student -> Element.text (formatDate student.date)
+                              , view = \_ student -> Element.text student.date
                               }
                             , { header = Element.none
                               , width = fill
@@ -435,9 +571,9 @@ view model =
 
               else
                 row []
-                    [ I.button [ Background.color (colorFromGrade model.student.grad |> .background), padding 10, Border.rounded 8, Font.color (colorFromGrade model.student.grad |> .foreground) ]
+                    [ I.button [ Background.color (rgb 0.5 0.8 0.5), padding 10, Border.rounded 8, Font.color (rgb255 10 10 10) ]
                         { onPress = Just Print
-                        , label = text "Print"
+                        , label = text "Drucken"
                         }
                     ]
             ]
