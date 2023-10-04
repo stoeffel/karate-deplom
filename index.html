@@ -67,7 +67,7 @@
         const niceDay = day.toString().padStart(2, 0);
         const niceMonth = month.toString().padStart(2, 0);
         const message =
-          `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad} Kyu am ${niceDay}.${niceMonth}.${year} erfolgreich bestanden hat.`.split(
+          `Hiermit bestätigen wir, dass ${name} die Prüfung\nzum ${grad}. Kyu am ${niceDay}.${niceMonth}.${year} erfolgreich bestanden hat.`.split(
             "\n"
           );
         const impressum =
@@ -126,8 +126,8 @@
             canvas.className = "print";
             canvas.setAttribute("width", "957");
             canvas.setAttribute("height", "800");
-            canvas.style.width = "947px";
-            canvas.style.height = "790px";
+            canvas.style.width = "872px";
+            canvas.style.height = "715px";
             return new Promise((resolve) => {
               prints.appendChild(canvas);
               window.requestAnimationFrame(() => {

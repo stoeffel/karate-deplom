@@ -200,8 +200,8 @@ main =
                                     [ HA.id "canvas"
                                     , HA.width 957
                                     , HA.height 800
-                                    , HA.style "height" "790px"
-                                    , HA.style "width" "947px"
+                                    , HA.style "height" "700px"
+                                    , HA.style "width" "857px"
                                     ]
                                     []
                                 )
@@ -542,7 +542,7 @@ view model =
                                             , Border.width 0
                                             , Font.center
                                             ]
-                                            (Element.text ("Kyu " ++ String.fromInt (gradeToInt student.grad)))
+                                            (Element.text (String.fromInt (gradeToInt student.grad) ++ ". Kyu"))
                               }
                             , { header = tableHeader [] "Datum"
                               , width = fill
